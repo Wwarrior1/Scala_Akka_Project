@@ -10,11 +10,12 @@ import app.Common._
 object Checkout {
   def props: Props = Props(new Checkout)
 
-  private final case object Close
-  private final case class Cancel(msg: String)
-  private final case object DeliverySelected
-  private final case object PaymentSelected
-  private final case object PaymentReceived
+  // Messages
+  final case object Close
+  final case class Cancel(msg: String)
+  final case object DeliverySelected
+  final case object PaymentSelected
+  final case object PaymentReceived
 
   // Messages for Timers
   private case object CheckoutTimerID
@@ -63,23 +64,23 @@ class Checkout extends Actor with Timers {
       originalSender.get ! Common.CartIsEmpty
 
     case CheckoutTimerExpired | Common.CheckoutCancelled =>
-      become_(context, cancelled, "Cancelled")
+      become_(context, cancelled, "SelectingDelivery", "Cancelled")
       self ! Cancel("CheckoutTimerExpired")
 
     case DeliverySelected =>
-      become_(context, selectingPayment, "SelectingPayment")
+      become_(context, selectingPayment, "SelectingDelivery", "SelectingPayment")
 
     case _ => println("[WARN | Bad request] (Checkout / selectingDelivery)")
   }
 
   def selectingPayment: Receive = {
     case CheckoutTimerExpired | Common.CheckoutCancelled =>
-      become_(context, cancelled, "Cancelled")
+      become_(context, cancelled, "SelectingPayment", "Cancelled")
       self ! Cancel("CheckoutTimerExpired")
 
     case PaymentSelected =>
       unsetCheckoutTimer()
-      become_(context, processingPayment, "ProcessingPayment")
+      become_(context, processingPayment, "SelectingPayment", "ProcessingPayment")
       setPaymentTimer()
 
     case _ => println("[WARN | Bad request] (Checkout / selectingPayment)")
@@ -87,12 +88,12 @@ class Checkout extends Actor with Timers {
 
   def processingPayment: Receive = {
     case PaymentTimerExpired | Common.CheckoutCancelled =>
-      become_(context, cancelled, "Cancelled")
+      become_(context, cancelled, "ProcessingPayment", "Cancelled")
       self ! Cancel("PaymentTimerExpired")
 
     case PaymentReceived =>
       unsetPaymentTimer()
-      become_(context, closed, "Closed")
+      become_(context, closed, "ProcessingPayment", "Closed")
       self ! Close
 
     case _ => println("[WARN | Bad request] (Checkout / processingPayment)")
@@ -101,18 +102,18 @@ class Checkout extends Actor with Timers {
 
   def closed: Receive = {
     case Close =>
-      println("  /timeout/ Closed !")
+      println("  // timeout // Closed !")
       originalSender.get ! Common.CheckoutClosed
-      become_(context, selectingDelivery, "SelectingDelivery")
+      become_(context, selectingDelivery, "Closed", "SelectingDelivery")
 
     case _ => println("[WARN | Bad request] (Checkout / closed)")
   }
 
   def cancelled: Receive = {
     case Cancel(msg) =>
-      println("  /" + msg + "/ Cancelled !")
+      println("  // " + msg + " // Cancelled !")
       originalSender.get ! Common.CheckoutCancelled
-      become_(context, selectingDelivery, "SelectingDelivery")
+      become_(context, selectingDelivery, "Cancelled", "SelectingDelivery")
 
     case _ => println("[WARN | Bad request] (Checkout / cancelled)")
   }

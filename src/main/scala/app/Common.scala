@@ -13,10 +13,12 @@ object Common {
   final case object CheckoutCancelled
   final case object CheckoutClosed
   final case object CartIsEmpty
+  final case object Init
+  final case class NewActorCreated(newActor: ActorRef)
 
-  final def become_(context: ActorContext, receive: Receive, msg: String): Unit = {
+  final def become_(context: ActorContext, receive: Receive, from: String, to: String): Unit = {
     context.become(receive)
-    println("  [-> " + msg + "]")
+    printMsg(from, to)
   }
 
   final def printMsg(from: String, to: String): Unit = {

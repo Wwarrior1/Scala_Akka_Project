@@ -105,7 +105,7 @@ class CartFSM(checkoutActor: ActorRef) extends FSM[State, Data] {
 
   whenUnhandled {
     case Event(CartTimerExpired, _) =>
-      println("  /CartTimerExpired/")
+      println("  // CartTimerExpired //")
       goto(Empty) using CartData(listOfItems = List[String]())
     case Event(Common.CartIsEmpty, _) =>
       println("-- Something went wrong ! Received info that Cart is empty !")

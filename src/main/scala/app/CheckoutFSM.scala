@@ -107,10 +107,10 @@ class CheckoutFSM extends FSM[State, Data] {
 
   whenUnhandled {
     case Event(CheckoutTimerExpired, _) =>
-      println("  /CheckoutTimerExpired/")
+      println("  // CheckoutTimerExpired //")
       goto(Cancelled)
     case Event(PaymentTimerExpired, _) =>
-      println("  /PaymentTimerExpired/")
+      println("  // PaymentTimerExpired //")
       goto(Cancelled)
     case Event(_event, _state) =>
       println("[WARN | Bad request] (" + _event + ", " + _state + ")")
