@@ -1,7 +1,6 @@
 package app
 
-import akka.actor.{Actor, Props, Timers}
-import akka.event.Logging
+import akka.actor.{Actor, ActorRef, Props, Timers}
 import app.Common._
 
 /**
@@ -9,101 +8,108 @@ import app.Common._
   */
 
 object Cart {
-  def props: Props = Props(new Cart)
 
   // Messages
-  final case class ItemAdded(newItem: String)
-  final case class ItemRemoved(oldItem: String)
+  final case class ItemAdd(newItem: String)
+  final case class ItemRemove(oldItem: String)
+  final case object CartIsEmpty
+
+  final case object CheckoutStart
+  final case class CheckoutStarted(actor: ActorRef, itemsCount: Int)
+
+  final case object CheckoutCancel
+  final case object CheckoutCancelled
+  final case object CheckoutClose
+  final case object CheckoutClosed
 
   // Messages for Timers
   private case object CartTimerID
   private case object CartTimerExpired
+
 }
 
-class Cart extends Actor with Timers {
+class Cart(customerActor: ActorRef) extends Actor with Timers {
 
   import Cart._
 
-  private val checkoutActor = context.actorOf(Props[Checkout], "checkoutActor")
+  private var checkoutActor: Option[ActorRef] = None
   private var listOfItems = List[String]()
-  val log = Logging(context.system, this)
 
-  def setTimer(): Unit = {
+  def setCartTimer(): Unit = {
     if (timers.isTimerActive(CartTimerID))
       timers.cancel(CartTimerID)
     timers.startSingleTimer(CartTimerID, CartTimerExpired, expirationTime)
   }
 
-  def unsetTimer(): Unit = {
+  def unsetCartTimer(): Unit = {
     if (timers.isTimerActive(CartTimerID))
       timers.cancel(CartTimerID)
   }
 
-  def receive: Receive = init
-
-  def init: Receive = {
-    case Init =>
-      sender ! NewActorCreated(checkoutActor)
-      become_(context, empty, "Init", "Empty")
-
-    case _ => println("[WARN | Bad request] (Cart / init)")
-  }
+  def receive: Receive = empty
 
   def empty: Receive = {
-    case Cart.ItemAdded(newItem) =>
-      println("(0)")
+    case ItemAdd(newItem) =>
       listOfItems = listOfItems :+ newItem
-      become_(context, nonEmpty, "Empty", "NonEmpty")
       println("(" + listOfItems.size + ") " + listOfItems)
-      setTimer()
+      become_(context, nonEmpty, "Empty", "NonEmpty")
+      setCartTimer()
 
-    case _ => println("[WARN | Bad request] (Cart / empty)")
+    case _ => printWarn("Bad request", "Cart / empty")
   }
 
   def nonEmpty: Receive = {
-    case Cart.CartTimerExpired =>
+    case CartTimerExpired =>
       listOfItems = List[String]()
-      println("  // CartTimerExpired //")
+      printTimerExpired("CartTimer")
       become_(context, empty, "NonEmpty", "Empty")
+      customerActor ! CartIsEmpty
 
-    case Cart.ItemAdded(newItem) =>
+    case ItemAdd(newItem) =>
       listOfItems = listOfItems :+ newItem
       println("(" + listOfItems.size + ") " + listOfItems)
-      setTimer()
+      setCartTimer()
 
-    case Cart.ItemRemoved(oldItem) =>
+    case ItemRemove(oldItem) =>
       if (!listOfItems.contains(oldItem))
-        println("[WARN | Tried to remove not existing element]")
+        customerActor ! ActionCouldNotBeInvoked("Tried to remove non existing element")
       else {
         listOfItems = listOfItems.filter(_ != oldItem)
         println("(" + listOfItems.size + ") " + listOfItems)
-        if (listOfItems.isEmpty)
+        if (listOfItems.isEmpty) {
           become_(context, empty, "NonEmpty", "Empty")
+          customerActor ! CartIsEmpty
+        }
       }
-      setTimer()
+      setCartTimer()
 
-    case Common.CheckoutStarted =>
-      println("Checkout started")
+    case CheckoutStart =>
+      unsetCartTimer()
       become_(context, inCheckout, "NonEmpty", "InCheckout")
-      unsetTimer()
-      checkoutActor ! Common.CheckoutStarted(listOfItems.size, self)
-    case _ => println("[WARN | Bad request] (Cart / nonEmpty)")
+      if (checkoutActor.isEmpty)
+        checkoutActor = Option(context.actorOf(
+          Props(new Checkout(customerActor)), "checkoutActor"))
+      checkoutActor.get ! CheckoutStarted(self, listOfItems.size)
+      customerActor ! CheckoutStarted(checkoutActor.get, listOfItems.size)
+
+    case _ => printWarn("Bad request", "Cart / nonEmpty")
   }
 
   def inCheckout: Receive = {
-    case Common.CheckoutCancelled =>
-      log.debug("-- Checkout cancelled")
+    case CheckoutCancel =>
+      customerActor ! CheckoutCancelled
       become_(context, nonEmpty, "InCheckout", "NonEmpty")
-      setTimer()
+      setCartTimer()
 
-    case Common.CheckoutClosed =>
-      println("-- Checkout closed")
+    case CheckoutClose =>
       listOfItems = List[String]()
+      customerActor ! CheckoutClosed
       become_(context, empty, "InCheckout", "Empty")
+      customerActor ! CartIsEmpty
 
-    case Common.CartIsEmpty =>
-      println("-- Something went wrong ! Received info that Cart is empty !")
+    case CartIsEmpty =>
+      printWarn("Something went wrong !", "Cart is empty in bad checkout !")
 
-    case _ => println("[WARN | Bad request] (Cart / inCheckout)")
+    case _ => printWarn("Bad request", "Cart / inCheckout")
   }
 }

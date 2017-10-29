@@ -1,8 +1,7 @@
 package app
 
 import akka.actor.{ActorSystem, Props}
-import app.Client.Terminate
-import app.Common.Init
+import app.Common.{Init, Terminate}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._

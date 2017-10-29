@@ -1,6 +1,7 @@
 package app
 
 import akka.actor.{Actor, ActorRef, Props, Timers}
+import app.Cart._
 import app.Common._
 
 /**
@@ -8,14 +9,17 @@ import app.Common._
   */
 
 object Checkout {
-  def props: Props = Props(new Checkout)
 
   // Messages
-  final case object Close
-  final case class Cancel(msg: String)
-  final case object DeliverySelected
-  final case object PaymentSelected
+  final case object DeliverySelect
   final case object PaymentReceived
+
+  final case object PaymentSelect
+  final case class PaymentServiceStarted(actor: ActorRef)
+
+  // Messages - helpers
+  final case object Close
+  final case object Cancel
 
   // Messages for Timers
   private case object CheckoutTimerID
@@ -24,11 +28,12 @@ object Checkout {
   private case object PaymentTimerExpired
 }
 
-class Checkout extends Actor with Timers {
+class Checkout(customerActor: ActorRef) extends Actor with Timers {
 
   import Checkout._
 
-  private var originalSender: Option[ActorRef] = None
+  private var paymentServiceActor: Option[ActorRef] = None
+  private var cartActor: Option[ActorRef] = None
 
   def setCheckoutTimer(): Unit = {
     if (timers.isTimerActive(CheckoutTimerID))
@@ -55,67 +60,89 @@ class Checkout extends Actor with Timers {
   def receive: Receive = selectingDelivery
 
   def selectingDelivery: Receive = {
-    case Common.CheckoutStarted(itemsCount, originalSender_) if itemsCount > 0 =>
-      originalSender = Some(originalSender_)
+    case CheckoutStarted(cartActor_, itemsCount) if itemsCount > 0 =>
+      this.cartActor = Option(cartActor_)
       setCheckoutTimer()
 
-    case Common.CheckoutStarted(itemsCount, originalSender_) if itemsCount == 0 =>
-      originalSender = Some(originalSender_)
-      originalSender.get ! Common.CartIsEmpty
+    case CheckoutStarted(cartActor_, itemsCount) if itemsCount == 0 =>
+      this.cartActor = Option(cartActor_)
+      this.cartActor.get ! CartIsEmpty
 
-    case CheckoutTimerExpired | Common.CheckoutCancelled =>
+    case CheckoutTimerExpired =>
       become_(context, cancelled, "SelectingDelivery", "Cancelled")
-      self ! Cancel("CheckoutTimerExpired")
+      printTimerExpired("CheckoutTimer")
+      self ! Cancel
 
-    case DeliverySelected =>
+    case CheckoutCancel =>
+      become_(context, cancelled, "SelectingDelivery", "Cancelled")
+      self ! Cancel
+      unsetCheckoutTimer()
+
+    case DeliverySelect =>
+      unsetCheckoutTimer()
       become_(context, selectingPayment, "SelectingDelivery", "SelectingPayment")
+      setCheckoutTimer()
 
-    case _ => println("[WARN | Bad request] (Checkout / selectingDelivery)")
+    case _ => printWarn("Bad request", "Checkout / selectingDelivery")
   }
 
   def selectingPayment: Receive = {
-    case CheckoutTimerExpired | Common.CheckoutCancelled =>
+    case CheckoutTimerExpired =>
       become_(context, cancelled, "SelectingPayment", "Cancelled")
-      self ! Cancel("CheckoutTimerExpired")
+      printTimerExpired("CheckoutTimer")
+      self ! Cancel
 
-    case PaymentSelected =>
+    case CheckoutCancel =>
+      become_(context, cancelled, "SelectingPayment", "Cancelled")
+      self ! Cancel
+      unsetCheckoutTimer()
+
+    case PaymentSelect =>
       unsetCheckoutTimer()
       become_(context, processingPayment, "SelectingPayment", "ProcessingPayment")
+      if (paymentServiceActor.isEmpty)
+        paymentServiceActor = Option(context.actorOf(
+          Props(new PaymentService(customerActor)), "paymentServiceActor"))
+      paymentServiceActor.get ! PaymentServiceStarted(self)
+      customerActor ! PaymentServiceStarted(paymentServiceActor.get)
       setPaymentTimer()
 
-    case _ => println("[WARN | Bad request] (Checkout / selectingPayment)")
+    case _ => printWarn("Bad request", "Checkout / selectingPayment")
   }
 
   def processingPayment: Receive = {
-    case PaymentTimerExpired | Common.CheckoutCancelled =>
+    case PaymentTimerExpired =>
       become_(context, cancelled, "ProcessingPayment", "Cancelled")
-      self ! Cancel("PaymentTimerExpired")
+      printTimerExpired("PaymentTimer")
+      self ! Cancel
+
+    case CheckoutCancel =>
+      become_(context, cancelled, "ProcessingPayment", "Cancelled")
+      self ! Cancel
 
     case PaymentReceived =>
       unsetPaymentTimer()
       become_(context, closed, "ProcessingPayment", "Closed")
       self ! Close
 
-    case _ => println("[WARN | Bad request] (Checkout / processingPayment)")
+    case _ => printWarn("Bad request", "Checkout / processingPayment")
   }
 
 
   def closed: Receive = {
     case Close =>
-      println("  // timeout // Closed !")
-      originalSender.get ! Common.CheckoutClosed
+      cartActor.get ! CheckoutClose
       become_(context, selectingDelivery, "Closed", "SelectingDelivery")
 
-    case _ => println("[WARN | Bad request] (Checkout / closed)")
+    case _ => printWarn("Bad request", "Checkout / closed")
   }
 
   def cancelled: Receive = {
-    case Cancel(msg) =>
-      println("  // " + msg + " // Cancelled !")
-      originalSender.get ! Common.CheckoutCancelled
+    case Cancel =>
+      cartActor.get ! CheckoutCancel
       become_(context, selectingDelivery, "Cancelled", "SelectingDelivery")
 
-    case _ => println("[WARN | Bad request] (Checkout / cancelled)")
+    case _ => printWarn("Bad request", "Checkout / cancelled")
   }
 
 }

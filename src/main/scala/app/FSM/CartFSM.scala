@@ -1,6 +1,7 @@
-package app
+package app.FSM
 
 import akka.actor.{ActorRef, FSM, Props}
+import app.Cart.{CartIsEmpty, CheckoutCancel, CheckoutClosed, CheckoutStarted}
 import app.Common._
 
 /**
@@ -35,83 +36,83 @@ class CartFSM(checkoutActor: ActorRef) extends FSM[State, Data] {
   when(Empty) {
     case Event(Init, Uninitialized) =>
       println("\n- - - - -\n")
-      goto(Empty) using CartData(listOfItems = List[String]())
+      goto(Empty) // TODO - repair: using CartData(listOfItems = List[String]())
     case Event(ItemAdded(newItem), CartData(listOfItems)) =>
       println("(0)")
       val newList = listOfItems :+ newItem
       println("(" + newList.size + ") " + newList)
-      goto(NonEmpty) using CartData(newList)
+      goto(NonEmpty) // TODO - repair: using CartData(newList)
   }
 
   when(NonEmpty) {
     case Event(ItemAdded(newItem), CartData(listOfItems)) =>
       val newList = listOfItems :+ newItem
       println("(" + newList.size + ") " + newList)
-      stay using CartData(newList)
+      stay // TODO - repair: using CartData(newList)
 
     case Event(ItemRemoved(oldItem), CartData(listOfItems)) =>
       if (!listOfItems.contains(oldItem)) {
-        println("[WARN | Tried to remove not existing element]")
+        printWarn("Tried to remove not existing element")
         stay
       } else {
         val newList = listOfItems.filter(_ != oldItem)
         println("(" + newList.size + ") " + newList)
         if (newList.nonEmpty)
-          stay using CartData(newList)
+          stay // TODO - repair: using CartData(newList)
         else
-          goto(Empty) using CartData(newList)
+          goto(Empty) // TODO - repair: using CartData(newList)
       }
 
-    case Event(Common.CheckoutStarted, CartData(listOfItems)) =>
+    case Event(CheckoutStarted, CartData(_)) =>
       println("Checkout started")
       goto(InCheckout)
   }
 
   when(InCheckout) {
-    case Event(Common.CheckoutCancelled, _) =>
+    case Event(CheckoutCancel, _) =>
       println("-- Checkout cancelled")
       goto(NonEmpty)
 
-    case Event(Common.CheckoutClosed, _) =>
+    case Event(CheckoutClosed, _) =>
       println("-- Checkout closed")
-      goto(Empty) using CartData(listOfItems = List[String]())
+      goto(Empty) // TODO - repair: using CartData(List[String]())
   }
 
   onTransition {
     case Empty -> NonEmpty =>
-      printMsg("Empty", "NonEmpty")
+      printTransition("Empty", "NonEmpty")
       setTimer(cartTimerName, CartTimerExpired, expirationTime)
 
     case NonEmpty -> Empty =>
-      printMsg("NonEmpty", "Empty")
+      printTransition("NonEmpty", "Empty")
 
     case NonEmpty -> InCheckout =>
       cancelTimer(cartTimerName)
-      printMsg("NonEmpty", "InCheckout")
+      printTransition("NonEmpty", "InCheckout")
       stateData match {
         case CartData(listOfItems) =>
-          checkoutActor ! Common.CheckoutStarted(listOfItems.size, self)
+          checkoutActor ! CheckoutStarted(self, listOfItems.size)
         case _ =>
       }
 
     case InCheckout -> NonEmpty =>
-      printMsg("InCheckout", "NonEmpty")
+      printTransition("InCheckout", "NonEmpty")
       setTimer(cartTimerName, CartTimerExpired, expirationTime)
 
     case InCheckout -> Empty =>
-      printMsg("InCheckout", "Empty")
+      printTransition("InCheckout", "Empty")
 
   }
 
   whenUnhandled {
     case Event(CartTimerExpired, _) =>
-      println("  // CartTimerExpired //")
-      goto(Empty) using CartData(listOfItems = List[String]())
-    case Event(Common.CartIsEmpty, _) =>
+      printTimerExpired("CartTimer")
+      goto(Empty) // TODO - repair: using CartData(List[String]())
+    case Event(CartIsEmpty, _) =>
       println("-- Something went wrong ! Received info that Cart is empty !")
       stay
     case Event(_event, _state) =>
-      println("[WARN | Bad request] (" + _event + ", " + _state + ")")
+      printWarn("Bad request", "" + _event + ", " + _state)
       stay
   }
 
