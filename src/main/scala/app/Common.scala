@@ -15,7 +15,7 @@ object Common {
   final case object Terminate
   final case class ActionCouldNotBeInvoked(reason: String)
 
-  val expirationTime: FiniteDuration = 4.seconds
+  val expirationTime: FiniteDuration = 5.seconds
 
   final def become_(context: ActorContext, receive: Receive, from: String, to: String): Unit = {
     context.become(receive)

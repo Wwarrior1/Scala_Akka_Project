@@ -26,6 +26,7 @@ object Checkout {
   private case object CheckoutTimerExpired
   private case object PaymentTimerID
   private case object PaymentTimerExpired
+
 }
 
 class Checkout(customerActor: ActorRef) extends Actor with Timers {

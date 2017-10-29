@@ -73,8 +73,6 @@ class Customer(clientActor: ActorRef) extends Actor with Timers {
     case CartIsEmpty =>
       println("\033[32m" + "CART IS EMPTY" + "\033[0m")
 
-    case Terminate =>
-      context.system.terminate()
     case _ =>
       printWarn("Bad request", "Customer")
   }

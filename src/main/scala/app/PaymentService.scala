@@ -27,7 +27,7 @@ class PaymentService(customerActor: ActorRef) extends Actor with Timers {
       this.checkoutActor = Option(checkoutActor_)
 
     case DoPayment =>
-      become_(context, paid, "waitingForPayment", "paid")
+      become_(context, paid, "WaitingForPayment", "Paid")
       self ! SendConfirmation
   }
 

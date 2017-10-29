@@ -1,9 +1,10 @@
 package app
 
 import akka.actor.{Actor, Props, Timers}
-import app.Cart.{CheckoutClose, CheckoutStart, ItemAdd, ItemRemove}
-import app.Checkout.DeliverySelect
+import app.Cart.{CheckoutStart, ItemAdd, ItemRemove}
+import app.Checkout.{DeliverySelect, PaymentSelect}
 import app.Common.{ActionCouldNotBeInvoked, Init, Terminate, printWarn}
+import app.PaymentService.DoPayment
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
@@ -26,13 +27,17 @@ class Client extends Actor with Timers {
       context.system.scheduler.scheduleOnce(
         2.5.second, customerActor, ItemRemove("ghi"))
       context.system.scheduler.scheduleOnce(
-        7.second, customerActor, ItemAdd("xxx"))
+        8.second, customerActor, ItemAdd("xxx"))
       context.system.scheduler.scheduleOnce(
-        8.second, customerActor, CheckoutStart)
+        9.second, customerActor, CheckoutStart)
       context.system.scheduler.scheduleOnce(
-        9.second, customerActor, DeliverySelect)
+        10.second, customerActor, DeliverySelect)
       context.system.scheduler.scheduleOnce(
-        10.second, customerActor, CheckoutClose)
+        11.second, customerActor, PaymentSelect)
+      context.system.scheduler.scheduleOnce(
+        13.second, customerActor, DoPayment)
+      context.system.scheduler.scheduleOnce(
+        15.second, self, Terminate)
 
     case ActionCouldNotBeInvoked(reason) =>
       printWarn("Action could not been invoked!", "\n> '" + reason + "'")
