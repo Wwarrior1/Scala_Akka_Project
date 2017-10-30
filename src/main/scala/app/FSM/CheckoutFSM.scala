@@ -1,6 +1,7 @@
-package app
+package app.FSM
 
 import akka.actor.{ActorRef, FSM, Props}
+import app.Cart.{CartIsEmpty, CheckoutCancel, CheckoutClosed, CheckoutStarted}
 import app.Common._
 
 /**
@@ -8,7 +9,7 @@ import app.Common._
   */
 
 object CheckoutFSM {
-  def props: Props = Props(new Checkout)
+  def props(customerActor: ActorRef): Props = Props(new CheckoutFSM(customerActor))
 
   // States
   private case object SelectingDelivery extends State
@@ -31,20 +32,20 @@ object CheckoutFSM {
 
 }
 
-class CheckoutFSM extends FSM[State, Data] {
+class CheckoutFSM(customerActor: ActorRef) extends FSM[State, Data] {
 
   import CheckoutFSM._
 
   startWith(SelectingDelivery, CheckoutData(originalSender = None))
 
   when(SelectingDelivery) {
-    case Event(Common.CheckoutStarted(itemsCount, newOriginalSender), _) =>
+    case Event(CheckoutStarted(newOriginalSender, itemsCount), _) =>
       if (itemsCount == 0)
-        newOriginalSender ! Common.CartIsEmpty
+        newOriginalSender ! CartIsEmpty
       setTimer(checkoutTimerName, CheckoutTimerExpired, expirationTime)
-      stay using CheckoutData(Some(newOriginalSender))
+      stay // TODO - repair: using CheckoutData(Some(newOriginalSender))
 
-    case Event(Common.CheckoutCancelled, _) =>
+    case Event(CheckoutCancel, _) =>
       goto(Cancelled)
 
     case Event(DeliverySelected, _) =>
@@ -52,7 +53,7 @@ class CheckoutFSM extends FSM[State, Data] {
   }
 
   when(SelectingPayment) {
-    case Event(Common.CheckoutCancelled, _) =>
+    case Event(CheckoutCancel, _) =>
       goto(Cancelled)
 
     case Event(PaymentSelected, _) =>
@@ -60,7 +61,7 @@ class CheckoutFSM extends FSM[State, Data] {
   }
 
   when(ProcessingPayment) {
-    case Event(Common.CheckoutCancelled, _) =>
+    case Event(CheckoutCancel, _) =>
       goto(Cancelled)
 
     case Event(PaymentReceived, _) =>
@@ -70,50 +71,50 @@ class CheckoutFSM extends FSM[State, Data] {
   when(Closed) {
     case Event(Close, CheckoutData(originalSender)) =>
       println("-- Closed !")
-      originalSender.get ! Common.CheckoutClosed
+      originalSender.get ! CheckoutClosed
       stay
   }
 
   when(Cancelled) {
     case Event(Cancel, CheckoutData(originalSender)) =>
       println("-- Cancelled !")
-      originalSender.get ! Common.CheckoutCancelled
+      originalSender.get ! CheckoutCancel
       stay
   }
 
   onTransition {
     case SelectingDelivery -> Cancelled =>
-      printMsg("SelectingDelivery", "Cancelled")
+      printTransition("SelectingDelivery", "Cancelled")
 
     case SelectingDelivery -> SelectingPayment =>
-      printMsg("SelectingDelivery", "SelectingPayment")
+      printTransition("SelectingDelivery", "SelectingPayment")
 
     case SelectingPayment -> Cancelled =>
-      printMsg("SelectingPayment", "Cancelled")
+      printTransition("SelectingPayment", "Cancelled")
 
     case SelectingPayment -> ProcessingPayment =>
       cancelTimer(checkoutTimerName)
-      printMsg("SelectingPayment", "ProcessingPayment")
+      printTransition("SelectingPayment", "ProcessingPayment")
       setTimer(paymentTimerName, PaymentTimerExpired, expirationTime)
 
     case ProcessingPayment -> Cancelled =>
-      printMsg("ProcessingPayment", "Cancelled")
+      printTransition("ProcessingPayment", "Cancelled")
 
     case ProcessingPayment -> Closed =>
       cancelTimer(paymentTimerName)
-      printMsg("ProcessingPayment", "Closed")
+      printTransition("ProcessingPayment", "Closed")
 
   }
 
   whenUnhandled {
     case Event(CheckoutTimerExpired, _) =>
-      println("  // CheckoutTimerExpired //")
+      printTimerExpired("CheckoutTimer")
       goto(Cancelled)
     case Event(PaymentTimerExpired, _) =>
-      println("  // PaymentTimerExpired //")
+      printTimerExpired("PaymentTimer")
       goto(Cancelled)
     case Event(_event, _state) =>
-      println("[WARN | Bad request] (" + _event + ", " + _state + ")")
+      printWarn("Bad request", "" + _event + ", " + _state)
       stay
   }
 
