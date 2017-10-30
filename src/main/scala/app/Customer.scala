@@ -73,6 +73,8 @@ class Customer(clientActor: ActorRef) extends Actor with Timers {
     case CartIsEmpty =>
       println("\033[32m" + "CART IS EMPTY" + "\033[0m")
 
+    case ActionCouldNotBeInvoked(reason) =>
+      printWarn("Action could not been invoked!", "\n> '" + reason + "'")
     case _ =>
       printWarn("Bad request", "Customer")
   }

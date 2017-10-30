@@ -23,8 +23,8 @@ object Cart {
   final case object CheckoutClosed
 
   // Messages for Timers
-  private case object CartTimerID
-  private case object CartTimerExpired
+  final case object CartTimerID
+  final case object CartTimerExpired
 
 }
 
@@ -33,7 +33,13 @@ class Cart(customerActor: ActorRef) extends Actor with Timers {
   import Cart._
 
   private var checkoutActor: Option[ActorRef] = None
-  private var listOfItems = List[String]()
+  private var listOfItems: List[String] = List[String]()
+
+  def getListOfItems: List[String] = listOfItems
+
+//  private def listOfItems_=(value: List[String]): Unit = {
+//    _listOfItems = value
+//  }
 
   def setCartTimer(): Unit = {
     if (timers.isTimerActive(CartTimerID))
