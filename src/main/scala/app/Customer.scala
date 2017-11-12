@@ -1,7 +1,9 @@
 package app
 
+import java.net.URI
+
 import akka.actor.{Actor, ActorRef, Props, Timers}
-import app.Cart._
+import app.CartManager._
 import app.Checkout.{DeliverySelect, PaymentSelect, PaymentServiceStarted}
 import app.Common._
 import app.PaymentService.{DoPayment, PaymentConfirmed}
@@ -15,7 +17,10 @@ object Customer {
 }
 
 class Customer(clientActor: ActorRef) extends Actor with Timers {
-  private val cartActor = context.actorOf(Props(new Cart(self)), "cartActor")
+
+  private val cartActor = context.actorOf(Props(
+    new CartManager(self, new Cart(Map.empty))), "cartActor")
+
   private var checkoutActor: Option[ActorRef] = None
   private var paymentServiceActor: Option[ActorRef] = None
 
@@ -23,8 +28,8 @@ class Customer(clientActor: ActorRef) extends Actor with Timers {
     case ItemAdd(newItem) =>
       cartActor ! ItemAdd(newItem)
 
-    case ItemRemove(oldItem) =>
-      cartActor ! ItemRemove(oldItem)
+    case ItemRemove(oldItem, count) =>
+      cartActor ! ItemRemove(oldItem, count)
 
     case CheckoutStart =>
       cartActor ! CheckoutStart

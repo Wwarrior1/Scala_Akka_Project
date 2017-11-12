@@ -1,7 +1,9 @@
 package app
 
+import java.net.URI
+
 import akka.actor.{Actor, Props, Timers}
-import app.Cart.{CheckoutStart, ItemAdd, ItemRemove}
+import app.CartManager.{CheckoutStart, ItemAdd, ItemRemove}
 import app.Checkout.{DeliverySelect, PaymentSelect}
 import app.Common.{ActionCouldNotBeInvoked, Init, Terminate, printWarn}
 import app.PaymentService.DoPayment
@@ -16,18 +18,26 @@ import scala.concurrent.duration._
 class Client extends Actor with Timers {
   private val customerActor = context.actorOf(Props(new Customer(self)), "customerActor")
 
+  private val uri_1 = new URI("12345")
+  private val uri_2 = new URI("23456")
+  private val uri_3 = new URI("34567")
+
+  private val item_1 = Item(uri_1, "milk", 3, 2)
+  private val item_2 = Item(uri_2, "apple", 0.5, 10)
+  private val item_3 = Item(uri_3, "bread", 2.5, 1)
+
   override def receive: Receive = {
     case Init =>
       context.system.scheduler.scheduleOnce(
-        1.second, customerActor, ItemAdd("abc"))
+        1.second, customerActor, ItemAdd(item_1))
       context.system.scheduler.scheduleOnce(
-        1.5.second, customerActor, ItemAdd("def"))
+        1.5.second, customerActor, ItemAdd(item_2))
       context.system.scheduler.scheduleOnce(
-        2.second, customerActor, ItemAdd("ghi"))
+        2.second, customerActor, ItemAdd(item_3))
       context.system.scheduler.scheduleOnce(
-        2.5.second, customerActor, ItemRemove("ghi"))
+        2.5.second, customerActor, ItemRemove(item_2, 5))
       context.system.scheduler.scheduleOnce(
-        8.second, customerActor, ItemAdd("xxx"))
+        8.second, customerActor, ItemAdd(item_1))
       context.system.scheduler.scheduleOnce(
         9.second, customerActor, CheckoutStart)
       context.system.scheduler.scheduleOnce(
