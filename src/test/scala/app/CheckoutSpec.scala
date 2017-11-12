@@ -1,8 +1,10 @@
 package app
 
+import java.net.URI
+
 import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import akka.testkit.{ImplicitSender, TestActorRef, TestKit, TestProbe}
-import app.Cart._
+import app.CartManager._
 import app.Checkout.{DeliverySelect, PaymentReceived, PaymentSelect, PaymentServiceStarted}
 import org.scalatest.{BeforeAndAfterAll, WordSpecLike}
 
@@ -12,6 +14,9 @@ import org.scalatest.{BeforeAndAfterAll, WordSpecLike}
 class CheckoutSpec extends TestKit(ActorSystem("CheckoutSpec"))
   with WordSpecLike with BeforeAndAfterAll with ImplicitSender {
 
+  private val uri_1 = new URI("12345")
+  private val item_1 = Item(uri_1, "milk", 3, 2)
+
   override def afterAll(): Unit = {
     system.terminate
   }
@@ -19,10 +24,10 @@ class CheckoutSpec extends TestKit(ActorSystem("CheckoutSpec"))
   "Checkout" must {
     "Test parent-child using TestActorRef" in {
       println("-------- " + Common.expirationTime)
-      val cartActor = TestActorRef(new Cart(self))
+      val cartActor = TestActorRef(new CartManager(self))
       var checkoutActor: Option[ActorRef] = None
 
-      cartActor ! ItemAdd("abc")
+      cartActor ! ItemAdd(item_1)
       cartActor ! CheckoutStart
       expectMsgPF() {
         case CheckoutStarted(checkoutActor_, 1) =>

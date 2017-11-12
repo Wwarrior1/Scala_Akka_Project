@@ -1,7 +1,7 @@
 package app
 
 import akka.actor.{Actor, ActorRef, Props, Timers}
-import app.Cart._
+import app.CartManager._
 import app.Common._
 
 /**
