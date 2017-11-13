@@ -15,35 +15,27 @@ object Checkout {
 
   // Messages
   final case object DeliverySelect
-
   final case object PaymentReceived
-
   final case object PaymentSelect
-
   final case class PaymentServiceStarted(actor: ActorRef)
 
   // Messages - helpers
   final case object Close
-
   final case object Cancel
 
   // Messages for Timers
   sealed trait TimerID
-
   private case object CheckoutTimerID extends TimerID
-
   private case object CheckoutTimerExpired
-
   private case object PaymentTimerID extends TimerID
-
   private case object PaymentTimerExpired
-
 
   final case class TimerEvent(timerID: TimerID, endTime: Long)
 
 }
 
-class Checkout(customerActor: ActorRef, id: String = "1") extends PersistentActor with Timers {
+class Checkout(customerActor: ActorRef, id: String = System.currentTimeMillis().toString)
+  extends PersistentActor with Timers {
 
   import Checkout._
 
@@ -51,7 +43,6 @@ class Checkout(customerActor: ActorRef, id: String = "1") extends PersistentActo
   private var cartActor: Option[ActorRef] = None
 
   def setTimer(timerID: TimerID): Unit = {
-    unsetTimer(timerID)
     persist(TimerEvent(timerID, System.currentTimeMillis() + expirationTime.toMillis)) { _ =>
       unsetTimer(timerID)
       if (timerID == CheckoutTimerID)
@@ -73,7 +64,7 @@ class Checkout(customerActor: ActorRef, id: String = "1") extends PersistentActo
 
   // PERSISTENCE
 
-  def persistenceId: String = "CartManager_" + id
+  def persistenceId: String = "Checkout_" + id
 
   override def receiveRecover: Receive = {
     case RecoveryCompleted =>
@@ -82,12 +73,14 @@ class Checkout(customerActor: ActorRef, id: String = "1") extends PersistentActo
       val newExpirationTime: FiniteDuration =
         (endTime - System.currentTimeMillis()).millis
       if (newExpirationTime.toMillis > 0) {
-        println("\033[36m" + "  // RECOVERED CartTimer //" + "\033[0m  ")
         unsetTimer(timerID)
-        if (timerID == CheckoutTimerID)
+        if (timerID == CheckoutTimerID) {
+          println("\033[36m" + "  // RECOVERED CheckoutTimer //" + "\033[0m  ")
           timers.startSingleTimer(CheckoutTimerID, CheckoutTimerExpired, newExpirationTime)
-        else if (timerID == PaymentTimerID)
+        } else if (timerID == PaymentTimerID) {
+          println("\033[36m" + "  // RECOVERED PaymentTimer //" + "\033[0m  ")
           timers.startSingleTimer(PaymentTimerID, PaymentTimerExpired, newExpirationTime)
+        }
       }
       println("\033[32m" + newExpirationTime.toSeconds + "\033[0m  ")
     case SnapshotOffer(_, actualState: Receive) =>
@@ -95,16 +88,13 @@ class Checkout(customerActor: ActorRef, id: String = "1") extends PersistentActo
       self ! Start(actualState)
   }
 
-  override def receiveCommand: Receive = start
+  override def receiveCommand: Receive = selectingDelivery
 
-  def start: Receive = {
-    case Start(actualState) =>
-      become_(context, actualState, "SNAP", actualState.getClass.getName)
-    case _ =>
-      become_(context, selectingDelivery, "Start", "SelectingDelivery")
-  }
 
   def selectingDelivery: Receive = {
+    case Start(actualState) =>
+      become_(context, actualState, "SNAP", actualState.getClass.getName)
+
     case CheckoutStarted(cartActor_, itemsCount) if itemsCount > 0 =>
       this.cartActor = Option(cartActor_)
       setTimer(CheckoutTimerID)

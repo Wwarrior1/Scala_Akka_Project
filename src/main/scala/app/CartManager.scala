@@ -23,7 +23,7 @@ object CartManager {
   final case class CheckoutStarted(actor: ActorRef, itemsCount: Int)
   final case object CheckoutCancel
   final case object CheckoutCancelled
-  final case object CheckoutClose
+  final case class CheckoutClose()
   final case object CheckoutClosed
 
   // Messages for Timers
@@ -42,7 +42,8 @@ object CartManager {
 
 }
 
-class CartManager(customerActor: ActorRef, var shoppingCart: Cart, id: String = "1") extends PersistentActor with Timers {
+class CartManager(customerActor: ActorRef, var shoppingCart: Cart, id: String = System.currentTimeMillis().toString)
+  extends PersistentActor with Timers {
 
   import CartManager._
 
@@ -107,29 +108,20 @@ class CartManager(customerActor: ActorRef, var shoppingCart: Cart, id: String = 
         timers.startSingleTimer(CartTimerID, CartTimerExpired, newExpirationTime)
       }
       println("\033[32m" + newExpirationTime.toSeconds + "\033[0m  ")
-
-//    case SnapshotOffer(_, Snapshot(shoppingCart_, actualState)) =>
-//      println("YOLO !")
-//      shoppingCart = shoppingCart_
-//      self ! Start(actualState)
     case SnapshotOffer(_, Snapshot(shoppingCart_, actualState)) =>
       println("YOLO !")
       shoppingCart = shoppingCart_
       self ! Start(actualState)
   }
 
-  override def receiveCommand: Receive = start
-
-  def start: Receive = {
-    case Start(actualState) =>
-      become_(context, actualState, "SNAP", actualState.getClass.getName)
-    case _ =>
-      become_(context, nonEmpty, "Start", "NonEmpty")
-  }
+  override def receiveCommand: Receive = empty
 
   // STATES
 
   def empty: Receive = {
+    case Start(actualState) =>
+      become_(context, actualState, "SNAP", actualState.getClass.getName)
+
     case ItemAdd(newItem) =>
       setCartTimer()
       persist(CartManagerEvent(ItemAddEvent(newItem))) { _ =>
