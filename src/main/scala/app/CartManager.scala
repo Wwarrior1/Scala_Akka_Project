@@ -6,8 +6,7 @@ import akka.actor.{ActorRef, Props, Timers}
 import akka.persistence.{PersistentActor, RecoveryCompleted, SnapshotOffer}
 import app.Common._
 
-import scala.concurrent.duration._
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.{FiniteDuration, _}
 
 /**
   * Created by Wojciech Baczyński on 19.10.17.
@@ -27,18 +26,15 @@ object CartManager {
   final case object CheckoutClosed
 
   // Messages for Timers
-  sealed trait TimerID
   final case object CartTimerID extends TimerID
   final case object CartTimerExpired
 
   // Persistence
-  sealed trait Event
   final case class ItemAddEvent(newItem: Item) extends Event
   final case class ItemRemoveEvent(oldItem: Item, count: Int) extends Event
   final case object CartClearEvent extends Event
 
   final case class CartManagerEvent(event: Event)
-  final case class TimerEvent(timerID: TimerID, endTime: Long)
 
 }
 
@@ -48,6 +44,7 @@ class CartManager(customerActor: ActorRef, var shoppingCart: Cart, id: String = 
   import CartManager._
 
   def this(customerActor: ActorRef) = this(customerActor, Cart.empty)
+
   def this(customerActor: ActorRef, id: String) = this(customerActor, Cart.empty, id)
 
   private var checkoutActor: Option[ActorRef] = None
@@ -58,14 +55,9 @@ class CartManager(customerActor: ActorRef, var shoppingCart: Cart, id: String = 
 
   def setCartTimer(time: FiniteDuration = expirationTime): Unit = {
     persist(TimerEvent(CartTimerID, System.currentTimeMillis() + expirationTime.toMillis)) { _ =>
-      unsetCartTimer()
+      unsetTimer(timers, CartTimerID)
       timers.startSingleTimer(CartTimerID, CartTimerExpired, expirationTime)
     }
-  }
-
-  def unsetCartTimer(): Unit = {
-    if (timers.isTimerActive(CartTimerID))
-      timers.cancel(CartTimerID)
   }
 
   def saveSnap(actualState: Receive): Unit = {
@@ -104,14 +96,17 @@ class CartManager(customerActor: ActorRef, var shoppingCart: Cart, id: String = 
         (endTime - System.currentTimeMillis()).millis
       if (newExpirationTime.toMillis > 0) {
         println("\033[36m" + "  // RECOVERED CartTimer //" + "\033[0m  ")
-        unsetCartTimer()
+        unsetTimer(timers, CartTimerID)
         timers.startSingleTimer(CartTimerID, CartTimerExpired, newExpirationTime)
       }
       println("\033[32m" + newExpirationTime.toSeconds + "\033[0m  ")
     case SnapshotOffer(_, Snapshot(shoppingCart_, actualState)) =>
       println("YOLO !")
       shoppingCart = shoppingCart_
+      println("(" + getListOfItems.size + ") " + getListOfItems)
       self ! Start(actualState)
+    case SnapshotOffer(metadata, snapshot) =>
+      println("YOLO !!!")
   }
 
   override def receiveCommand: Receive = empty
@@ -169,7 +164,7 @@ class CartManager(customerActor: ActorRef, var shoppingCart: Cart, id: String = 
       }
 
     case CheckoutStart =>
-      unsetCartTimer()
+      unsetTimer(timers, CartTimerID)
       become_(context, inCheckout, "NonEmpty", "InCheckout")
       if (checkoutActor.isEmpty)
         checkoutActor = Option(context.actorOf(
@@ -178,7 +173,7 @@ class CartManager(customerActor: ActorRef, var shoppingCart: Cart, id: String = 
       customerActor ! CheckoutStarted(checkoutActor.get, getListOfItems.size)
 
     case Snap => saveSnap(nonEmpty)
-    case CheckState(_) => customerActor ! CheckState("NonEmpty")
+    case CheckState => customerActor ! CheckState("NonEmpty")
     case _ => printWarn("Bad request", "CartManager / nonEmpty")
   }
 
@@ -198,7 +193,7 @@ class CartManager(customerActor: ActorRef, var shoppingCart: Cart, id: String = 
       printWarn("Something went wrong !", "CartManager is empty in bad checkout !")
 
     case Snap => saveSnap(inCheckout)
-    case CheckState(_) => customerActor ! CheckState("InCheckout")
+    case CheckState => customerActor ! CheckState("InCheckout")
     case _ => printWarn("Bad request", "CartManager / inCheckout")
   }
 }

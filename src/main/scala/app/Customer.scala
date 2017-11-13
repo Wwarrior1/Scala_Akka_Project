@@ -17,7 +17,7 @@ object Customer {
 class Customer(clientActor: ActorRef) extends Actor with Timers {
 
   private val cartActor = context.actorOf(Props(
-    new CartManager(self, new Cart(Map.empty))), "cartActor")
+    new CartManager(self, new Cart(Map.empty), "1")), "cartActor")
 
   private var checkoutActor: Option[ActorRef] = None
   private var paymentServiceActor: Option[ActorRef] = None

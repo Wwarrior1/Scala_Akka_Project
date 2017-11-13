@@ -24,13 +24,10 @@ object Checkout {
   final case object Cancel
 
   // Messages for Timers
-  sealed trait TimerID
   private case object CheckoutTimerID extends TimerID
   private case object CheckoutTimerExpired
   private case object PaymentTimerID extends TimerID
   private case object PaymentTimerExpired
-
-  final case class TimerEvent(timerID: TimerID, endTime: Long)
 
 }
 
@@ -44,17 +41,12 @@ class Checkout(customerActor: ActorRef, id: String = System.currentTimeMillis().
 
   def setTimer(timerID: TimerID): Unit = {
     persist(TimerEvent(timerID, System.currentTimeMillis() + expirationTime.toMillis)) { _ =>
-      unsetTimer(timerID)
+      unsetTimer(timers, timerID)
       if (timerID == CheckoutTimerID)
         timers.startSingleTimer(CheckoutTimerID, CheckoutTimerExpired, expirationTime)
       else if (timerID == PaymentTimerID)
         timers.startSingleTimer(PaymentTimerID, PaymentTimerExpired, expirationTime)
     }
-  }
-
-  def unsetTimer(timerID: TimerID): Unit = {
-    if (timers.isTimerActive(timerID))
-      timers.cancel(timerID)
   }
 
   def saveSnap(actualState: Receive): Unit = {
@@ -73,7 +65,7 @@ class Checkout(customerActor: ActorRef, id: String = System.currentTimeMillis().
       val newExpirationTime: FiniteDuration =
         (endTime - System.currentTimeMillis()).millis
       if (newExpirationTime.toMillis > 0) {
-        unsetTimer(timerID)
+        unsetTimer(timers, timerID)
         if (timerID == CheckoutTimerID) {
           println("\033[36m" + "  // RECOVERED CheckoutTimer //" + "\033[0m  ")
           timers.startSingleTimer(CheckoutTimerID, CheckoutTimerExpired, newExpirationTime)
@@ -111,10 +103,10 @@ class Checkout(customerActor: ActorRef, id: String = System.currentTimeMillis().
     case CheckoutCancel =>
       become_(context, cancelled, "SelectingDelivery", "Cancelled")
       self ! Cancel
-      unsetTimer(CheckoutTimerID)
+      unsetTimer(timers, CheckoutTimerID)
 
     case DeliverySelect =>
-      unsetTimer(CheckoutTimerID)
+      unsetTimer(timers, CheckoutTimerID)
       become_(context, selectingPayment, "SelectingDelivery", "SelectingPayment")
       setTimer(CheckoutTimerID)
 
@@ -132,10 +124,10 @@ class Checkout(customerActor: ActorRef, id: String = System.currentTimeMillis().
     case CheckoutCancel =>
       become_(context, cancelled, "SelectingPayment", "Cancelled")
       self ! Cancel
-      unsetTimer(CheckoutTimerID)
+      unsetTimer(timers, CheckoutTimerID)
 
     case PaymentSelect =>
-      unsetTimer(CheckoutTimerID)
+      unsetTimer(timers, CheckoutTimerID)
       become_(context, processingPayment, "SelectingPayment", "ProcessingPayment")
       if (paymentServiceActor.isEmpty)
         paymentServiceActor = Option(context.actorOf(
@@ -160,7 +152,7 @@ class Checkout(customerActor: ActorRef, id: String = System.currentTimeMillis().
       self ! Cancel
 
     case PaymentReceived =>
-      unsetTimer(PaymentTimerID)
+      unsetTimer(timers, PaymentTimerID)
       become_(context, closed, "ProcessingPayment", "Closed")
       self ! Close
 
