@@ -22,9 +22,10 @@ object Checkout {
   final case object Cancel
 
   // Messages for Timers
-  private case object CheckoutTimerID
+  sealed trait TimerID
+  private case object CheckoutTimerID extends TimerID
   private case object CheckoutTimerExpired
-  private case object PaymentTimerID
+  private case object PaymentTimerID extends TimerID
   private case object PaymentTimerExpired
 
 }

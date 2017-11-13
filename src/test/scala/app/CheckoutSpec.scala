@@ -1,9 +1,7 @@
 package app
 
-import java.net.URI
-
 import akka.actor.{Actor, ActorRef, ActorSystem, Props}
-import akka.testkit.{ImplicitSender, TestActorRef, TestKit, TestProbe}
+import akka.testkit.{ImplicitSender, TestKit, TestProbe}
 import app.CartManager._
 import app.Checkout.{DeliverySelect, PaymentReceived, PaymentSelect, PaymentServiceStarted}
 import org.scalatest.{BeforeAndAfterAll, WordSpecLike}
@@ -14,34 +12,11 @@ import org.scalatest.{BeforeAndAfterAll, WordSpecLike}
 class CheckoutSpec extends TestKit(ActorSystem("CheckoutSpec"))
   with WordSpecLike with BeforeAndAfterAll with ImplicitSender {
 
-  private val uri_1 = new URI("12345")
-  private val item_1 = Item(uri_1, "milk", 3, 2)
-
   override def afterAll(): Unit = {
     system.terminate
   }
 
   "Checkout" must {
-    "Test parent-child using TestActorRef" in {
-      println("-------- " + Common.expirationTime)
-      val cartActor = TestActorRef(new CartManager(self))
-      var checkoutActor: Option[ActorRef] = None
-
-      cartActor ! ItemAdd(item_1)
-      cartActor ! CheckoutStart
-      expectMsgPF() {
-        case CheckoutStarted(checkoutActor_, 1) =>
-          checkoutActor = Option(checkoutActor_)
-      }
-
-      checkoutActor.get ! DeliverySelect
-      checkoutActor.get ! PaymentSelect
-      expectMsgPF() {
-        case PaymentServiceStarted(_) => ()
-      }
-      checkoutActor.get ! PaymentReceived
-      expectMsg(CheckoutClosed)
-    }
     "Test parent-child using TestProbe" in {
       val proxy = TestProbe()
       val parent = system.actorOf(Props(new Actor {
@@ -63,20 +38,5 @@ class CheckoutSpec extends TestKit(ActorSystem("CheckoutSpec"))
       proxy.expectMsg(CheckoutClose)
     }
   }
-
-  //  "Checkout" should {
-  //    "Test parent-child relationship 2" in {
-  //      val parent = TestProbe()
-  //      val child = parent.childActorOf(Props(new Checkout(self)))
-  //      parent.send(child, CheckoutStarted(parent.ref, 1))
-  //      parent.send(child, DeliverySelect)
-  //      parent.send(child, PaymentSelect)
-  //      parent.expectMsgPF() {
-  //        case PaymentServiceStarted(_) => ()
-  //      }
-  //      parent.send(child, PaymentReceived)
-  //      parent.expectMsg(CheckoutClose)
-  //    }
-  //  }
 
 }

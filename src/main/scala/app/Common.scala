@@ -12,10 +12,18 @@ import scala.concurrent.duration._
 object Common {
 
   final case object Init
+  final case object Init1
+  final case object Init2
   final case object Terminate
   final case class ActionCouldNotBeInvoked(reason: String)
+  final case object Snap
+  final case class CheckState(stateName: String)
+  final case object CheckState
+  final case class Start(actualState: Receive)
 
-  var expirationTime: FiniteDuration = 5.seconds
+  final case class Snapshot(shoppingCart: Cart, actualState: Receive)
+
+  var expirationTime: FiniteDuration = 20.seconds
 
   final def become_(context: ActorContext, receive: Receive, from: String, to: String): Unit = {
     context.become(receive)

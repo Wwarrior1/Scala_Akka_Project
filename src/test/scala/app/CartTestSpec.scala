@@ -7,7 +7,7 @@ import org.scalatest.{BeforeAndAfter, WordSpecLike}
 /**
   * Created by Wojciech Baczyński on 12.11.17.
   */
-class CartTest extends WordSpecLike with BeforeAndAfter {
+class CartTestSpec extends WordSpecLike with BeforeAndAfter {
 
   private val uri_1 = new URI("aaa")
   private val uri_2 = new URI("bbb")

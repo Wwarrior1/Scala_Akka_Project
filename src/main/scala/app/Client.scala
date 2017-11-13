@@ -5,7 +5,7 @@ import java.net.URI
 import akka.actor.{Actor, Props, Timers}
 import app.CartManager.{CheckoutStart, ItemAdd, ItemRemove}
 import app.Checkout.{DeliverySelect, PaymentSelect}
-import app.Common.{ActionCouldNotBeInvoked, Init, Terminate, printWarn}
+import app.Common._
 import app.PaymentService.DoPayment
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -16,7 +16,7 @@ import scala.concurrent.duration._
   */
 
 class Client extends Actor with Timers {
-  private val customerActor = context.actorOf(Props(new Customer(self)), "customerActor")
+  private var customerActor = context.actorOf(Props(new Customer(self)), "customerActor")
 
   private val uri_1 = new URI("12345")
   private val uri_2 = new URI("23456")
@@ -28,26 +28,41 @@ class Client extends Actor with Timers {
 
   override def receive: Receive = {
     case Init =>
+      self ! Init2
+//      context.system.scheduler.scheduleOnce(
+//        1.second, customerActor, ItemAdd(item_1))
+//      context.system.scheduler.scheduleOnce(
+//        1.5.second, customerActor, ItemAdd(item_2))
+//      context.system.scheduler.scheduleOnce(
+//        2.second, customerActor, ItemAdd(item_3))
+//      context.system.scheduler.scheduleOnce(
+//        2.5.second, customerActor, ItemRemove(item_2, 5))
+//      context.system.scheduler.scheduleOnce(
+//        8.second, customerActor, ItemAdd(item_1))
+//      context.system.scheduler.scheduleOnce(
+//        9.second, customerActor, CheckoutStart)
+//      context.system.scheduler.scheduleOnce(
+//        10.second, customerActor, DeliverySelect)
+//      context.system.scheduler.scheduleOnce(
+//        11.second, customerActor, PaymentSelect)
+//      context.system.scheduler.scheduleOnce(
+//        13.second, customerActor, DoPayment)
+//      context.system.scheduler.scheduleOnce(
+//        15.second, self, Terminate)
+
+    case Init1 =>
       context.system.scheduler.scheduleOnce(
         1.second, customerActor, ItemAdd(item_1))
       context.system.scheduler.scheduleOnce(
         1.5.second, customerActor, ItemAdd(item_2))
       context.system.scheduler.scheduleOnce(
-        2.second, customerActor, ItemAdd(item_3))
+        2.second, customerActor, Snap)
       context.system.scheduler.scheduleOnce(
-        2.5.second, customerActor, ItemRemove(item_2, 5))
+        2.5.second, customerActor, Terminate)
+
+    case Init2 =>
       context.system.scheduler.scheduleOnce(
-        8.second, customerActor, ItemAdd(item_1))
-      context.system.scheduler.scheduleOnce(
-        9.second, customerActor, CheckoutStart)
-      context.system.scheduler.scheduleOnce(
-        10.second, customerActor, DeliverySelect)
-      context.system.scheduler.scheduleOnce(
-        11.second, customerActor, PaymentSelect)
-      context.system.scheduler.scheduleOnce(
-        13.second, customerActor, DoPayment)
-      context.system.scheduler.scheduleOnce(
-        15.second, self, Terminate)
+        1.second, customerActor, CheckState)
 
     case ActionCouldNotBeInvoked(reason) =>
       printWarn("Action could not been invoked!", "\n> '" + reason + "'")

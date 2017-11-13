@@ -1,7 +1,5 @@
 package app
 
-import java.net.URI
-
 import akka.actor.{Actor, ActorRef, Props, Timers}
 import app.CartManager._
 import app.Checkout.{DeliverySelect, PaymentSelect, PaymentServiceStarted}
@@ -25,6 +23,15 @@ class Customer(clientActor: ActorRef) extends Actor with Timers {
   private var paymentServiceActor: Option[ActorRef] = None
 
   override def receive: Receive = {
+    case Snap =>
+      cartActor ! Snap
+
+    case CheckState =>
+      cartActor ! CheckState
+
+    case CheckState(stateName) =>
+      println("\033[33m" + " >> STATE: " + stateName + "\033[0m")
+
     case ItemAdd(newItem) =>
       cartActor ! ItemAdd(newItem)
 
@@ -80,6 +87,8 @@ class Customer(clientActor: ActorRef) extends Actor with Timers {
 
     case ActionCouldNotBeInvoked(reason) =>
       printWarn("Action could not been invoked!", "\n> '" + reason + "'")
+    case Terminate =>
+      context.system.terminate()
     case _ =>
       printWarn("Bad request", "Customer")
   }
