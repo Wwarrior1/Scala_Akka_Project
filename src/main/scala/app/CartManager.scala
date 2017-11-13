@@ -47,7 +47,6 @@ class CartManager(customerActor: ActorRef, var shoppingCart: Cart, id: String = 
   import CartManager._
 
   def this(customerActor: ActorRef) = this(customerActor, Cart.empty)
-
   def this(customerActor: ActorRef, id: String) = this(customerActor, Cart.empty, id)
 
   private var checkoutActor: Option[ActorRef] = None
@@ -113,8 +112,10 @@ class CartManager(customerActor: ActorRef, var shoppingCart: Cart, id: String = 
 //      println("YOLO !")
 //      shoppingCart = shoppingCart_
 //      self ! Start(actualState)
-    case SnapshotOffer(_, _) =>
-      println("YOLO !!!")
+    case SnapshotOffer(_, Snapshot(shoppingCart_, actualState)) =>
+      println("YOLO !")
+      shoppingCart = shoppingCart_
+      self ! Start(actualState)
   }
 
   override def receiveCommand: Receive = start
