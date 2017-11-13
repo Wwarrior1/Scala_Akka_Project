@@ -11,7 +11,6 @@ import org.iq80.leveldb.util.FileUtils
 import org.scalatest.{BeforeAndAfterAll, WordSpecLike}
 
 import scala.concurrent.duration._
-import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
   * Created by Wojciech Baczyński on 29.10.17.
@@ -46,21 +45,21 @@ class CartManagerSpec extends TestKit(ActorSystem("CartManagerSpec"))
 
   "CartManager (asynch)" must {
     "Receive CartIsEmpty" in {
-      val cartActor = system.actorOf(Props(new CartManager(self, "1")))
+      val cartActor = system.actorOf(Props(new CartManager(self)))
       cartActor ! ItemAdd(item_1)
       cartActor ! ItemRemove(item_1, 2)
       expectMsg(CartIsEmpty)
     }
 
     "Receive ActionCouldNotBeInvoked" in {
-      val cartActor = system.actorOf(Props(new CartManager(self, "2")))
+      val cartActor = system.actorOf(Props(new CartManager(self)))
       cartActor ! ItemAdd(item_1)
       cartActor ! ItemRemove(item_2, 10)
       expectMsg(ActionCouldNotBeInvoked("Tried to remove non existing element"))
     }
 
     "Receive CheckoutStarted" in {
-      val cartActor = system.actorOf(Props(new CartManager(self, "3")))
+      val cartActor = system.actorOf(Props(new CartManager(self)))
       cartActor ! ItemAdd(item_1)
       cartActor ! ItemAdd(item_2)
       cartActor ! ItemAdd(item_3)
@@ -71,7 +70,7 @@ class CartManagerSpec extends TestKit(ActorSystem("CartManagerSpec"))
     }
 
     "Receive CheckoutCancelled" in {
-      val cartActor = system.actorOf(Props(new CartManager(self, "4")))
+      val cartActor = system.actorOf(Props(new CartManager(self)))
       cartActor ! ItemAdd(item_1)
       cartActor ! CheckoutStart
       expectMsgPF() {
@@ -82,7 +81,7 @@ class CartManagerSpec extends TestKit(ActorSystem("CartManagerSpec"))
     }
 
     "Receive CheckoutClosed" in {
-      val cartActor = system.actorOf(Props(new CartManager(self, "5")))
+      val cartActor = system.actorOf(Props(new CartManager(self)))
       cartActor ! ItemAdd(item_1)
       cartActor ! CheckoutStart
       expectMsgPF() {
@@ -93,7 +92,7 @@ class CartManagerSpec extends TestKit(ActorSystem("CartManagerSpec"))
     }
 
     "Expect CartTimer expiration" in {
-      val cartActor = system.actorOf(Props(new CartManager(self, "6")))
+      val cartActor = system.actorOf(Props(new CartManager(self)))
       cartActor ! ItemAdd(item_1)
       expectMsg(5.5.second, CartIsEmpty)
     }
@@ -102,7 +101,7 @@ class CartManagerSpec extends TestKit(ActorSystem("CartManagerSpec"))
       val oldExpirationTime = Common.expirationTime
 
       Common.expirationTime = 1.second
-      val cartActor = system.actorOf(Props(new CartManager(self, "7")))
+      val cartActor = system.actorOf(Props(new CartManager(self)))
       cartActor ! ItemAdd(item_1)
       cartActor ! CheckoutStart
       expectMsgPF() {
