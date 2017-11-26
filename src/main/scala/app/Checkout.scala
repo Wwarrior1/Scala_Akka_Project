@@ -22,10 +22,10 @@ object Checkout {
   final case object Cancel
 
   // Messages for Timers
-  private case object CheckoutTimerID
-  private case object CheckoutTimerExpired
-  private case object PaymentTimerID
-  private case object PaymentTimerExpired
+  private case object CheckoutTimerID extends TimerID
+  private case object CheckoutTimerExpired extends TimerMsg
+  private case object PaymentTimerID extends TimerID
+  private case object PaymentTimerExpired extends TimerMsg
 
 }
 
@@ -36,27 +36,10 @@ class Checkout(customerActor: ActorRef) extends Actor with Timers {
   private var paymentServiceActor: Option[ActorRef] = None
   private var cartActor: Option[ActorRef] = None
 
-  def setCheckoutTimer(): Unit = {
-    if (timers.isTimerActive(CheckoutTimerID))
-      timers.cancel(CheckoutTimerID)
-    timers.startSingleTimer(CheckoutTimerID, CheckoutTimerExpired, expirationTime)
-  }
-
-  def unsetCheckoutTimer(): Unit = {
-    if (timers.isTimerActive(CheckoutTimerID))
-      timers.cancel(CheckoutTimerID)
-  }
-
-  def setPaymentTimer(): Unit = {
-    if (timers.isTimerActive(PaymentTimerID))
-      timers.cancel(PaymentTimerID)
-    timers.startSingleTimer(PaymentTimerID, PaymentTimerExpired, expirationTime)
-  }
-
-  def unsetPaymentTimer(): Unit = {
-    if (timers.isTimerActive(PaymentTimerID))
-      timers.cancel(PaymentTimerID)
-  }
+  def unsetCheckoutTimer(): Unit = unsetTimer(timers, CheckoutTimerID)
+  def unsetPaymentTimer(): Unit = unsetTimer(timers, PaymentTimerID)
+  def setCheckoutTimer(): Unit = setTimer(timers, CheckoutTimerID, CheckoutTimerExpired)
+  def setPaymentTimer(): Unit = setTimer(timers, PaymentTimerID, PaymentTimerExpired)
 
   def receive: Receive = selectingDelivery
 

@@ -25,8 +25,8 @@ object CartManager {
   final case object CheckoutClosed
 
   // Messages for Timers
-  final case object CartTimerID
-  final case object CartTimerExpired
+  final case object CartTimerID extends TimerID
+  final case object CartTimerExpired extends TimerMsg
 
 }
 
@@ -40,16 +40,8 @@ class CartManager(customerActor: ActorRef, var shoppingCart: Cart) extends Actor
 
   def getListOfItems: Map[URI, Item] = shoppingCart.items
 
-  def setCartTimer(): Unit = {
-    if (timers.isTimerActive(CartTimerID))
-      timers.cancel(CartTimerID)
-    timers.startSingleTimer(CartTimerID, CartTimerExpired, expirationTime)
-  }
-
-  def unsetCartTimer(): Unit = {
-    if (timers.isTimerActive(CartTimerID))
-      timers.cancel(CartTimerID)
-  }
+  def unsetCartTimer(): Unit = unsetTimer(timers, CartTimerID)
+  def setCartTimer(): Unit = setTimer(timers, CartTimerID, CartTimerExpired)
 
   def receive: Receive = empty
 
