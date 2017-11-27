@@ -9,7 +9,8 @@ import app.Common.Init
 
 object ProductCatalog {
   final case class SearchItem(query: String)
-  final case class ItemsFound(items: List[(Int, Item)])
+  /** @param items (List[score: Int, item: Item], time: Float) */
+  final case class ItemsFound(items: List[(Int, Item)], time: Float)
   final case object ItemNotFound
 }
 
@@ -21,8 +22,8 @@ class ProductCatalog(var databaseManager: DatabaseManager) extends Actor {
     case Init => databaseManager = databaseManager.loadRecords()
 
     case SearchItem(query) =>
-      val results = databaseManager.search(query)
-      sender ! ItemsFound(results)
+      val (results, time) = databaseManager.search(query)
+      sender ! ItemsFound(results, time)
 
     //    case ItemNotFound => {
     //    }

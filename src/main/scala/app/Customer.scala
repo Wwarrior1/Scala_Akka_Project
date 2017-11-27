@@ -32,7 +32,8 @@ class Customer(clientActor: ActorRef) extends Actor with Timers {
     case SearchItem(query) =>
       productCatalogActor ! SearchItem(query)
 
-    case ItemsFound(items) =>
+    case ItemsFound(items, time) =>
+      println("\033[33mFound items in time: \033[33;1m" + time + "\033[33m seconds\033[0m")
       items.foreach(item => println(
         item._1 + " | " + item._2.name + " / " + item._2.brand + "; " + item._2.price + "; " + item._2.count))
 

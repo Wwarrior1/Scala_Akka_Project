@@ -12,12 +12,14 @@ case class DatabaseManager(database: Map[URI, Item]) {
   def loadRecords(): DatabaseManager = {
     val t0 = System.nanoTime()
 
-    val filename = getClass.getResource("/query_result")
+    var totalLines = 0
+    val filename = getClass.getResource("/query_result_mid")
     var newListOfItems: Map[URI, Item] = Map.empty
 
     Source.fromURL(filename).getLines()
       .drop(1)
       .foreach(line => {
+        totalLines += 1
         var parsedLine = line.split(",").toList
 
         if (parsedLine.size == 2) parsedLine = parsedLine :+ ""
@@ -37,7 +39,7 @@ case class DatabaseManager(database: Map[URI, Item]) {
 
     val t1 = System.nanoTime()
 
-    println("\033[33mLoaded \033[33;1m" + newListOfItems.size + "\033[33m unique records\033[0m in \033[33;1m" + Math.round((t1 - t0) / 10000000) / 100.0 + "\033[0m seconds.")
+    println("\033[33mLoaded \033[33;1m" + totalLines + "\033[33;0m (\033[33;1m" + newListOfItems.size + "\033[33m unique) records\033[0m in \033[33;1m" + Math.round((t1 - t0) / 10000000) / 100.0 + "\033[0m seconds.")
 
     copy(database = newListOfItems)
   }
@@ -49,7 +51,9 @@ case class DatabaseManager(database: Map[URI, Item]) {
     new java.math.BigInteger(1, m.digest()).toString(16).reverse.padTo(32, "0").reverse.mkString
   }
 
-  def search(query: String): List[(Int, Item)] = {
+  def search(query: String): (List[(Int, Item)], Float) = {
+    val t0 = System.nanoTime()
+
     val keywords = query.split(" ").toList
     var scoreList: List[(Int, Item)] = List.empty
 
@@ -58,7 +62,10 @@ case class DatabaseManager(database: Map[URI, Item]) {
     )
 
     scoreList = scoreList.sortWith(_._1 > _._1)
-    scoreList.take(10)
+
+    val t1 = System.nanoTime()
+
+    (scoreList.take(10), Math.round((t1 - t0) / 10000000) / 100.0.toFloat)
   }
 
   private def score(keywords: List[String], item: Item): Int = {
