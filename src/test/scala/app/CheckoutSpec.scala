@@ -15,7 +15,7 @@ class CheckoutSpec extends TestKit(ActorSystem("CheckoutSpec"))
   with WordSpecLike with BeforeAndAfterAll with ImplicitSender {
 
   private val uri_1 = new URI("12345")
-  private val item_1 = Item(uri_1, "milk", 3, 2)
+  private val item_1 = Item(uri_1, "milk", "shop", 3, 2)
 
   override def afterAll(): Unit = {
     system.terminate
@@ -63,20 +63,4 @@ class CheckoutSpec extends TestKit(ActorSystem("CheckoutSpec"))
       proxy.expectMsg(CheckoutClose)
     }
   }
-
-  //  "Checkout" should {
-  //    "Test parent-child relationship 2" in {
-  //      val parent = TestProbe()
-  //      val child = parent.childActorOf(Props(new Checkout(self)))
-  //      parent.send(child, CheckoutStarted(parent.ref, 1))
-  //      parent.send(child, DeliverySelect)
-  //      parent.send(child, PaymentSelect)
-  //      parent.expectMsgPF() {
-  //        case PaymentServiceStarted(_) => ()
-  //      }
-  //      parent.send(child, PaymentReceived)
-  //      parent.expectMsg(CheckoutClose)
-  //    }
-  //  }
-
 }

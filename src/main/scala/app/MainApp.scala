@@ -1,22 +1,18 @@
 package app
 
 import akka.actor.{ActorSystem, Props}
-import app.Common.{Init, Terminate}
-
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration._
+import app.Common.Init
+import com.typesafe.config.{Config, ConfigFactory}
 
 /**
   * Created by Wojciech Baczyński on 19.10.17.
   */
 
 object MainApp extends App {
-  val system = ActorSystem("project")
-  val clientActor = system.actorOf(Props[Client], "clientActor")
+  val config: Config = ConfigFactory.load()
+  val clientSystem = ActorSystem("client", config.getConfig("client").withFallback(config))
+
+  val clientActor = clientSystem.actorOf(Props[Client], "clientActor")
 
   clientActor ! Init
-
-  system.scheduler.scheduleOnce(
-    30.second, clientActor, Terminate
-  )
 }

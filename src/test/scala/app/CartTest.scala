@@ -14,10 +14,10 @@ class CartTest extends WordSpecLike with BeforeAndAfter {
   private val uri_3 = new URI("ccc")
   private val uri_4 = new URI("ddd")
 
-  private val item_1 = Item(uri_1, "kakao", 10, 2)
-  private val item_2 = Item(uri_2, "coffe", 62, 1)
-  private val item_3 = Item(uri_3, "milk", 3, 5)
-  private val item_4 = Item(uri_4, "water", 1.5, 6)
+  private val item_1 = Item(uri_1, "kakao", "shop", 10, 2)
+  private val item_2 = Item(uri_2, "coffe", "shop", 62, 1)
+  private val item_3 = Item(uri_3, "milk", "shop", 3, 5)
+  private val item_4 = Item(uri_4, "water", "shop", 1.5, 6)
 
   var shoppingCart: Cart = _
 

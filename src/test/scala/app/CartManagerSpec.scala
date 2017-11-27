@@ -25,13 +25,13 @@ class CartManagerSpec extends TestKit(ActorSystem("CartManagerSpec"))
   private val uri_6 = new URI("bbb")
   private val uri_7 = new URI("ccc")
 
-  private val item_1 = Item(uri_1, "milk", 3, 2)
-  private val item_2 = Item(uri_2, "apple", 0.5, 10)
-  private val item_3 = Item(uri_3, "bread", 2.5, 1)
-  private val item_4 = Item(uri_4, "banana", 1.5, 3)
-  private val item_5 = Item(uri_5, "a", 123, 3)
-  private val item_6 = Item(uri_6, "b", 234, 4)
-  private val item_7 = Item(uri_7, "c", 234, 5)
+  private val item_1 = Item(uri_1, "milk", "shop", 3, 2)
+  private val item_2 = Item(uri_2, "apple", "shop", 0.5, 10)
+  private val item_3 = Item(uri_3, "bread", "shop", 2.5, 1)
+  private val item_4 = Item(uri_4, "banana", "shop", 1.5, 3)
+  private val item_5 = Item(uri_5, "a", "shop", 123, 3)
+  private val item_6 = Item(uri_6, "b", "shop", 234, 4)
+  private val item_7 = Item(uri_7, "c", "shop", 234, 5)
 
   override def afterAll(): Unit = {
     system.terminate

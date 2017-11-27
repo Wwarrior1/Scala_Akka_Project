@@ -1,12 +1,12 @@
 package app
 
-import java.net.URI
-
-import akka.actor.{Actor, ActorRef, Props, Timers}
+import akka.actor.{Actor, ActorRef, ActorSelection, Props, Timers}
 import app.CartManager._
 import app.Checkout.{DeliverySelect, PaymentSelect, PaymentServiceStarted}
 import app.Common._
 import app.PaymentService.{DoPayment, PaymentConfirmed}
+import app.ProductCatalog.{ItemsFound, SearchItem}
+import com.typesafe.config.{Config, ConfigFactory}
 
 /**
   * Created by Wojciech Baczyński on 19.10.17.
@@ -18,6 +18,10 @@ object Customer {
 
 class Customer(clientActor: ActorRef) extends Actor with Timers {
 
+  val config: Config = ConfigFactory.load()
+  val productCatalogActor: ActorSelection =
+    context.actorSelection("akka.tcp://database@127.0.0.1:2552/user/productCatalogActor")
+
   private val cartActor = context.actorOf(Props(
     new CartManager(self, new Cart(Map.empty))), "cartActor")
 
@@ -25,6 +29,13 @@ class Customer(clientActor: ActorRef) extends Actor with Timers {
   private var paymentServiceActor: Option[ActorRef] = None
 
   override def receive: Receive = {
+    case SearchItem(query) =>
+      productCatalogActor ! SearchItem(query)
+
+    case ItemsFound(items) =>
+      items.foreach(item => println(
+        item._1 + " | " + item._2.name + " / " + item._2.brand + "; " + item._2.price + "; " + item._2.count))
+
     case ItemAdd(newItem) =>
       cartActor ! ItemAdd(newItem)
 

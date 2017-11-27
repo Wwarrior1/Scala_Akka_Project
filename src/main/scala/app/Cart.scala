@@ -9,7 +9,7 @@ import java.net.URI
 /**
   * @param id : unique item identifier (java.net.URI)
   */
-case class Item(id: URI, name: String, price: BigDecimal, count: Int)
+case class Item(id: URI, name: String, brand: String, price: BigDecimal, count: Int)
 
 case class Cart(items: Map[URI, Item]) {
   def addItem(newItem: Item): Cart = {

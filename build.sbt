@@ -11,5 +11,9 @@ libraryDependencies ++= Seq(
   "org.fusesource.leveldbjni"   % "leveldbjni-all"   % "1.8",
 
   "com.typesafe.akka" %% "akka-testkit" % "2.5.6" % "test",
-  "org.scalatest" %% "scalatest" % "3.0.4" % "test"
+  "org.scalatest" %% "scalatest" % "3.0.4" % "test",
+
+  "com.typesafe.akka" % "akka-remote_2.12" % "2.5.6"
 )
+
+concurrentRestrictions in Global += Tags.limit(Tags.Test, 1) // HOWEVER, NOT WORKING
