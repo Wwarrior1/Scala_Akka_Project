@@ -3,10 +3,7 @@ package app
 import java.net.URI
 
 import akka.actor.{Actor, Props, Timers}
-import app.CartManager.{CheckoutStart, ItemAdd, ItemRemove}
-import app.Checkout.{DeliverySelect, PaymentSelect}
 import app.Common.{ActionCouldNotBeInvoked, Init, Terminate, printWarn}
-import app.PaymentService.DoPayment
 import app.ProductCatalog.SearchItem
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -30,7 +27,10 @@ class Client extends Actor with Timers {
   override def receive: Receive = {
     case Init =>
       context.system.scheduler.scheduleOnce(
-        1.second, customerActor, SearchItem("walnuts emerald roasted salt"))
+//        1.second, customerActor, SearchItem("fanta"))
+        1.second, customerActor, SearchItem("walnuts emerald roasted"))
+//        1.second, customerActor, SearchItem("shouldReturnNotFound"))
+//        1.second, customerActor, SearchItem("walnuts emerald roasted glazed salt with sea tree bag jar cork Hawaiian company"))
 
 //      context.system.scheduler.scheduleOnce(
 //        1.second, customerActor, ItemAdd(item_1))

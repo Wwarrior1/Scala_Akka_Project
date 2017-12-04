@@ -29,3 +29,4 @@ project/plugins/project/
 .idea_modules/
 /project/target/
 /project/project/target/
+/src/main/resources/query_result

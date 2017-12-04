@@ -5,7 +5,7 @@ import app.CartManager._
 import app.Checkout.{DeliverySelect, PaymentSelect, PaymentServiceStarted}
 import app.Common._
 import app.PaymentService.{DoPayment, PaymentConfirmed}
-import app.ProductCatalog.{ItemsFound, SearchItem}
+import app.ProductCatalog.{ItemNotFound, ItemsFound, SearchItem}
 import com.typesafe.config.{Config, ConfigFactory}
 
 /**
@@ -30,12 +30,16 @@ class Customer(clientActor: ActorRef) extends Actor with Timers {
 
   override def receive: Receive = {
     case SearchItem(query) =>
+      println("\033[33mSearching: \033[33;1m" + query + "\033[33;0m ...\033[0m")
       productCatalogActor ! SearchItem(query)
 
     case ItemsFound(items, time) =>
       println("\033[33mFound items in time: \033[33;1m" + time + "\033[33m seconds\033[0m")
-      items.foreach(item => println(
-        item._1 + " | " + item._2.name + " / " + item._2.brand + "; " + item._2.price + "; " + item._2.count))
+      items.foreach(item => println("\033[34m" +
+        item._1 + " | " + item._2.name + " / " + item._2.brand + "; " + item._2.price + "; " + item._2.count + "\033[0m"))
+
+    case ItemNotFound =>
+      println("\033[33mItem \033[33;1mnot\033[33;0m found !\033[0m")
 
     case ItemAdd(newItem) =>
       cartActor ! ItemAdd(newItem)

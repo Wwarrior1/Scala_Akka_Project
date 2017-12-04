@@ -1,7 +1,7 @@
 package app
 
 import akka.actor.Actor
-import app.Common.Init
+import app.DatabaseManager.{IndexDatabase, LoadDatabase}
 
 /**
   * Created by Wojciech Baczyński on 26.11.17.
@@ -19,14 +19,14 @@ class ProductCatalog(var databaseManager: DatabaseManager) extends Actor {
   import ProductCatalog._
 
   override def receive: Receive = {
-    case Init => databaseManager = databaseManager.loadRecords()
+    case LoadDatabase => databaseManager = databaseManager.loadRecords()
+
+    case IndexDatabase => databaseManager = databaseManager.indexDatabase()
 
     case SearchItem(query) =>
       val (results, time) = databaseManager.search(query)
-      sender ! ItemsFound(results, time)
-
-    //    case ItemNotFound => {
-    //    }
+      if (results.isEmpty) sender ! ItemNotFound
+      else sender ! ItemsFound(results, time)
   }
 
 }

@@ -1,9 +1,10 @@
 package app
 
 import akka.actor.{ActorSystem, Props}
-import app.Common.Init
+import app.DatabaseManager.{IndexDatabase, LoadDatabase}
 import com.typesafe.config.ConfigFactory
 
+import scala.collection.immutable.HashMap
 import scala.util.control.Breaks.{break, breakable}
 
 /**
@@ -14,9 +15,10 @@ object DatabaseApp extends App {
   val config = ConfigFactory.load()
   val databaseSystem = ActorSystem("database", config.getConfig("database").withFallback(config))
 
-  val productCatalogActor = databaseSystem.actorOf(Props(new ProductCatalog(new DatabaseManager(Map.empty))), "productCatalogActor")
+  val productCatalogActor = databaseSystem.actorOf(Props(new ProductCatalog(new DatabaseManager(HashMap.empty, Map.empty))), "productCatalogActor")
 
-  productCatalogActor ! Init
+  productCatalogActor ! LoadDatabase
+  productCatalogActor ! IndexDatabase
 
   println("+ -----\033[1;33m DATABASE \033[0m----- +")
   println("|\033[33m q / quit / exit / :q \033[0m|")

@@ -2,26 +2,46 @@ package app
 
 import java.net.URI
 
+import scala.collection.immutable.{HashMap, Map}
 import scala.io.Source
 
 /**
   * Created by Wojciech Baczyński on 26.11.17.
   */
 
-case class DatabaseManager(database: Map[URI, Item]) {
-  def loadRecords(): DatabaseManager = {
-    val t0 = System.nanoTime()
+object DatabaseManager {
+  val empty = DatabaseManager(HashMap.empty, Map.empty)
 
-    var totalLines = 0
-    val filename = getClass.getResource("/query_result_mid")
-    var newListOfItems: Map[URI, Item] = Map.empty
+  final case object LoadDatabase
+  final case object IndexDatabase
+}
+
+case class DatabaseManager(database: HashMap[URI, Item], index: Map[String, List[URI]]) {
+  def loadRecords(): DatabaseManager = {
+    val filename = getClass.getResource("/query_result_micro")
+    var newListOfItems: HashMap[URI, Item] = HashMap.empty
+
+    val totalLines = scala.io.Source.fromURL(filename).getLines().size
+    var currentLine = 0.0
+    var percentageStep = 0
+
+    println("\n>> \033[34;1mLOADING RECORDS\033[0m <<")
+    print(" ----------\n ")
+
+    val t0 = System.nanoTime()
 
     Source.fromURL(filename).getLines()
       .drop(1)
       .foreach(line => {
-        totalLines += 1
-        var parsedLine = line.split(",").toList
 
+        currentLine += 1
+        if ((currentLine / totalLines * 100) > percentageStep) {
+          percentageStep += 10
+          if (percentageStep <= 90) print('.')
+          else println(".")
+        }
+
+        var parsedLine = line.split(",").toList
         if (parsedLine.size == 2) parsedLine = parsedLine :+ ""
         else if (parsedLine.size == 1) parsedLine = parsedLine :+ "" :+ ""
         else if (parsedLine.isEmpty) parsedLine = parsedLine :+ "" :+ "" :+ ""
@@ -35,6 +55,7 @@ case class DatabaseManager(database: Map[URI, Item]) {
           newListOfItems = newListOfItems.updated(uri, Item(uri, parsedLine(1), parsedLine(2), scala.util.Random.nextInt(100), oldCount + 1))
         } else
           newListOfItems = newListOfItems.updated(uri, Item(uri, parsedLine(1), parsedLine(2), scala.util.Random.nextInt(100), 1))
+
       })
 
     val t1 = System.nanoTime()
@@ -42,6 +63,47 @@ case class DatabaseManager(database: Map[URI, Item]) {
     println("\033[33mLoaded \033[33;1m" + totalLines + "\033[33;0m (\033[33;1m" + newListOfItems.size + "\033[33m unique) records\033[0m in \033[33;1m" + Math.round((t1 - t0) / 10000000) / 100.0 + "\033[0m seconds.")
 
     copy(database = newListOfItems)
+  }
+
+  def indexDatabase(): DatabaseManager = {
+    println("\n>> \033[34;1mINDEXING\033[0m <<")
+    print(" ----------\n ")
+
+    var indexMap: collection.mutable.MutableList[(String, URI)] = collection.mutable.MutableList.empty
+
+    val totalRecords = database.values.size
+    var currentLine = 0.0
+    var percentageStep = 0
+
+    val t0 = System.nanoTime()
+
+    database.values.foreach(item => {
+
+      currentLine += 1
+      if ((currentLine / totalRecords * 100) > percentageStep) {
+        percentageStep += 10
+        if (percentageStep <= 90) print('.')
+        else println(".")
+      }
+
+      (item.name + " " + item.brand)
+        .toLowerCase.replace("\"", "").split(" ")
+        .foreach(word => indexMap.+=((word, item.id)))
+
+    })
+
+    val ret = indexMap.groupBy(_._1).map { case (k, v) => k -> v.map(_._2).toList }
+
+    val t1 = System.nanoTime()
+
+    println("\033[33mIndexed in \033[33;1m" + Math.round((t1 - t0) / 10000000) / 100.0 + "\033[0m seconds.")
+
+    //    println("+++++\n")
+    //    ret.foreach(e =>
+    //      println(e._1 + " -> " + e._2))
+    //    println("\n+++++")
+
+    copy(index = ret)
   }
 
   private def hash(s: String) = {
@@ -57,37 +119,19 @@ case class DatabaseManager(database: Map[URI, Item]) {
     val keywords = query.split(" ").toList
     var scoreList: List[(Int, Item)] = List.empty
 
-    database.values.foreach(item =>
-      scoreList = scoreList :+ (score(keywords, item), item)
-    )
+    var uriList: List[URI] = List.empty
 
-    scoreList = scoreList.sortWith(_._1 > _._1)
+    keywords.foreach(keyword => {
+      val uri = index.getOrElse(keyword.toLowerCase, null)
+      if (uri != null) uriList = uriList.++(uri)
+    })
+
+    scoreList = uriList.groupBy(identity).mapValues(_.size).toVector.map(_.swap).toList.sortWith(_._1 > _._1)
+      .map(item => (item._1, database(item._2)))
 
     val t1 = System.nanoTime()
 
     (scoreList.take(10), Math.round((t1 - t0) / 10000000) / 100.0.toFloat)
   }
 
-  private def score(keywords: List[String], item: Item): Int = {
-    var count = 0
-
-    item.name.split(" ").foreach(word =>
-      keywords.foreach(keyword =>
-        if (word.toLowerCase.contains(keyword.toLowerCase))
-          count = count + 1
-      ))
-
-    item.brand.split(" ").foreach(word =>
-      keywords.foreach(keyword =>
-        if (word.toLowerCase.contains(keyword.toLowerCase))
-          count = count + 1
-      ))
-
-    count
-  }
-
-}
-
-object DatabaseManager {
-  val empty = DatabaseManager(Map.empty)
 }
