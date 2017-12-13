@@ -3,7 +3,10 @@ package app
 import java.net.URI
 
 import akka.actor.{Actor, Props, Timers}
+import app.CartManager.{CheckoutStart, ItemAdd, ItemRemove}
+import app.Checkout.{DeliverySelect, PaymentSelect}
 import app.Common.{ActionCouldNotBeInvoked, Init, Terminate, printWarn}
+import app.PaymentService.{DoPayment, PayPal, PayU, Visa}
 import app.ProductCatalog.SearchItem
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -26,14 +29,14 @@ class Client extends Actor with Timers {
 
   override def receive: Receive = {
     case Init =>
-      context.system.scheduler.scheduleOnce(
+//      context.system.scheduler.scheduleOnce(
 //        1.second, customerActor, SearchItem("fanta"))
-        1.second, customerActor, SearchItem("walnuts emerald roasted"))
+//        1.second, customerActor, SearchItem("walnuts emerald roasted"))
 //        1.second, customerActor, SearchItem("shouldReturnNotFound"))
 //        1.second, customerActor, SearchItem("walnuts emerald roasted glazed salt with sea tree bag jar cork Hawaiian company"))
 
-//      context.system.scheduler.scheduleOnce(
-//        1.second, customerActor, ItemAdd(item_1))
+      context.system.scheduler.scheduleOnce(
+        1.second, customerActor, ItemAdd(item_1))
 //      context.system.scheduler.scheduleOnce(
 //        1.5.second, customerActor, ItemAdd(item_2))
 //      context.system.scheduler.scheduleOnce(
@@ -42,16 +45,23 @@ class Client extends Actor with Timers {
 //        2.5.second, customerActor, ItemRemove(item_2, 5))
 //      context.system.scheduler.scheduleOnce(
 //        8.second, customerActor, ItemAdd(item_1))
+      context.system.scheduler.scheduleOnce(
+        1.5.second, customerActor, CheckoutStart)
+
+      context.system.scheduler.scheduleOnce(
+        2.second, customerActor, DeliverySelect)
+      context.system.scheduler.scheduleOnce(
+        2.5.second, customerActor, PaymentSelect)
+
 //      context.system.scheduler.scheduleOnce(
-//        9.second, customerActor, CheckoutStart)
+//        3.second, customerActor, DoPayment(PayPal))
 //      context.system.scheduler.scheduleOnce(
-//        10.second, customerActor, DeliverySelect)
-//      context.system.scheduler.scheduleOnce(
-//        11.second, customerActor, PaymentSelect)
-//      context.system.scheduler.scheduleOnce(
-//        13.second, customerActor, DoPayment)
-//      context.system.scheduler.scheduleOnce(
-//        15.second, self, Terminate)
+//        4.second, customerActor, DoPayment(PayU))
+      context.system.scheduler.scheduleOnce(
+        5.second, customerActor, DoPayment(Visa))
+
+      context.system.scheduler.scheduleOnce(
+        20.second, self, Terminate)
 
     case ActionCouldNotBeInvoked(reason) =>
       printWarn("Action could not been invoked!", "\n> '" + reason + "'")

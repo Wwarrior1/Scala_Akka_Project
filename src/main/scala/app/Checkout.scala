@@ -13,6 +13,7 @@ object Checkout {
   // Messages
   final case object DeliverySelect
   final case object PaymentReceived
+  final case object PaymentNotReceived
 
   final case object PaymentSelect
   final case class PaymentServiceStarted(actor: ActorRef)
@@ -108,6 +109,8 @@ class Checkout(customerActor: ActorRef) extends Actor with Timers {
       unsetPaymentTimer()
       become_(context, closed, "ProcessingPayment", "Closed")
       self ! Close
+
+    case PaymentNotReceived =>
 
     case _ => printWarn("Bad request", "Checkout / processingPayment")
   }

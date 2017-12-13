@@ -1,12 +1,15 @@
 package app
 
-import akka.actor.{Actor, ActorRef, ActorSelection, Props, Timers}
+import akka.actor.SupervisorStrategy.{Restart, Resume, Stop}
+import akka.actor.{Actor, ActorRef, ActorSelection, OneForOneStrategy, Props, SupervisorStrategy, Timers}
 import app.CartManager._
-import app.Checkout.{DeliverySelect, PaymentSelect, PaymentServiceStarted}
+import app.Checkout.{DeliverySelect, PaymentNotReceived, PaymentSelect, PaymentServiceStarted}
 import app.Common._
-import app.PaymentService.{DoPayment, PaymentConfirmed}
+import app.PaymentService._
 import app.ProductCatalog.{ItemNotFound, ItemsFound, SearchItem}
 import com.typesafe.config.{Config, ConfigFactory}
+
+import scala.concurrent.duration.Duration
 
 /**
   * Created by Wojciech Baczyński on 19.10.17.
@@ -71,11 +74,11 @@ class Customer(clientActor: ActorRef) extends Actor with Timers {
       else
         checkoutActor.get ! PaymentSelect
 
-    case DoPayment =>
+    case DoPayment(target: PaymentTarget) =>
       if (paymentServiceActor.isEmpty)
         clientActor ! ActionCouldNotBeInvoked("'Payment Service' actor has not been initialized yet")
       else
-        paymentServiceActor.get ! DoPayment
+        paymentServiceActor.get ! DoPayment(target)
 
     // New actor refs
 
@@ -91,6 +94,8 @@ class Customer(clientActor: ActorRef) extends Actor with Timers {
       println("\033[32m" + "PAYMENT SERVICE STARTED" + "\033[0m")
     case PaymentConfirmed =>
       println("\033[32m" + "PAYMENT CONFIRMED" + "\033[0m")
+    case PaymentRefused =>
+      println("\033[32m" + "PAYMENT REFUSED" + "\033[0m")
     case CartIsEmpty =>
       println("\033[32m" + "CART IS EMPTY" + "\033[0m")
 
